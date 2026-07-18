@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>美美专属小游戏</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(180deg, #ffe4ec 0%, #ffc6d9 100%);
+            font-family: -apple-system, 'PingFang SC', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            touch-action: none;
+        }
+        h1 {
+            color: #e91e63;
+            font-size: 22px;
+            margin-bottom: 6px;
+            text-shadow: 0 2px 4px rgba(233,30,99,0.2);
+        }
+        #subtitle {
+            color: #c2185b;
+            font-size: 13px;
+            margin-bottom: 10px;
+            opacity: 0.8;
+        }
+        #scoreBoard {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 8px;
+            font-size: 16px;
+            color: #ad1457;
+            font-weight: 600;
+        }
+        #scoreBoard span { color: #e91e63; }
+        canvas {
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(233,30,99,0.25);
+            max-width: 92vw;
+            background: #fff0f5;
+        }
+        #startScreen, #winScreen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 10;
+        }
+        .card {
+            background: rgba(255,255,255,0.95);
+            border-radius: 20px;
+            padding: 30px 28px;
+            box-shadow: 0 12px 40px rgba(233,30,99,0.3);
+            max-width: 320px;
+        }
+        .card h2 {
+            color: #e91e63;
+            font-size: 20px;
+            margin-bottom: 12px;
+        }
+        .card p {
+            color: #880e4f;
+            font-size: 14px;
+            line-height: 1.8;
+            margin-bottom: 18px;
+        }
+        .btn {
+            background: linear-gradient(135deg, #ff6b9d, #e91e63);
+            color: white;
+            border: none;
+            padding: 12px 36px;
+            font-size: 17px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(233,30,99,0.4);
+            transition: transform 0.15s;
+        }
+        .btn:active { transform: scale(0.93); }
+        #winPhotoBox {
+            width: 180px;
+            height: 180px;
+            margin: 0 auto 18px;
+            border-radius: 50%;
+            padding: 5px;
+            background: linear-gradient(135deg, #ff6b9d, #e91e63, #ff6b9d);
+            box-shadow: 0 0 30px rgba(233,30,99,0.6), 0 8px 24px rgba(233,30,99,0.4);
+            animation: photoPulse 2s ease-in-out infinite;
+        }
+        #winPhoto {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            display: block;
+            animation: photoSpin 3s linear infinite;
+        }
+        @keyframes photoSpin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        @keyframes photoPulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 30px rgba(233,30,99,0.6); }
+            50% { transform: scale(1.08); box-shadow: 0 0 45px rgba(233,30,99,0.9); }
+        }
+        #bgmBtn {
+            position: fixed;
+            top: 14px;
+            right: 14px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: 0.5px solid #e91e63;
+            background: rgba(255,255,255,0.9);
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 20;
+            box-shadow: 0 2px 8px rgba(233,30,99,0.2);
+        }
+        #bgmBtn:active { transform: scale(0.9); }
+        #hearts-bg {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+        .float-heart {
+            position: absolute;
+            font-size: 20px;
+            animation: floatUp linear forwards;
+            opacity: 0.4;
+        }
+        @keyframes floatUp {
+            from { transform: translateY(100vh); }
+            to { transform: translateY(-20px); }
+        }
+        #tip {
+            position: fixed;
+            bottom: 12px;
+            width: 100%;
+            text-align: center;
+            color: #ad1457;
+            font-size: 12px;
+            opacity: 0.6;
+            z-index: 5;
+        }
+    </style>
+</head>
+<body>
+    <div id="hearts-bg"></div>
+    <h1>重磅新游！小乐乐接爱心！</h1>
+    <div id="subtitle">之固中第一乐</div>
+    <div id="scoreBoard">
+        爱心: <span id="score">0</span> / 520　|　最高: <span id="high">0</span>
+    </div>
+    <canvas id="game" width="380" height="460"></canvas>
+
+    <div id="startScreen">
+        <div class="card">
+            <h2>你好呀美美～</h2>
+            <p>简单小游戏规则：<br>
+            移动接住掉下来的爱心礼物<br>
+            凑齐 <b>520 颗爱心</b> 就有！！！雷霆大惊喜！！</p>
+            <button class="btn" onclick="startGame()">开始玩 🎮</button>
+        </div>
+    </div>
+
+    <div id="winScreen" style="display:none;">
+        <div class="card">
+            <div id="winPhotoBox"><img id="winPhoto" src="photo.jpg" onerror="this.style.display='none'"></div>
+            <h2>呵呵，让你小子又赢了</h2>
+            <p>小乐乐，<br>
+            每天都开开心心哦<br>
+            接住每一颗属于你的爱心 💗<br><br>
+            <b>—— 来自一个忧郁的帅哥</b></p>
+            <button class="btn" onclick="startGame()">再玩一次 🔄</button>
+        </div>
+    </div>
+
+    <div id="tip">手机左右滑动 · 电脑用鼠标移动</div>
+
+    <button id="bgmBtn" onclick="toggleBgm()">🎵</button>
+
+    <canvas id="game" width="380" height="460" style="display:none;"></canvas>
+
+    <script>
+        // ========================================
+        // 把美美的照片放到和 index.html 同一个文件夹
+        // 命名为 photo.jpg，就会自动显示啦！
+        // 没有照片就用默认可爱头像
+        // ========================================
+        // 接东西的篮子用粉色动漫女孩
+        const PLAYER_PHOTO = 'player.jpg';
+        // 通关惊喜用美美的照片
+        const WIN_PHOTO = 'photo.jpg';
+
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const highEl = document.getElementById('high');
+        const startScreen = document.getElementById('startScreen');
+        const winScreen = document.getElementById('winScreen');
+
+        const W = canvas.width;
+        const H = canvas.height;
+
+        let player, items, score, highScore, running, mouseX, speed, spawnTimer, gameLoop;
+        let playerImg = null;
+        let winImg = null;
+        let winAnimFrame = 0;
+
+        highScore = +(localStorage.getItem('meimeiHigh') || 0);
+        highEl.textContent = highScore;
+
+        // 加载玩家角色图片
+        const pImg = new Image();
+        pImg.onload = () => { playerImg = pImg; };
+        pImg.onerror = () => { playerImg = null; };
+        pImg.src = PLAYER_PHOTO;
+
+        // 加载通关惊喜图片
+        const wImg = new Image();
+        wImg.onload = () => { winImg = wImg; };
+        wImg.onerror = () => { winImg = null; };
+        wImg.src = WIN_PHOTO;
+
+        function init() {
+            player = { x: W / 2, y: H - 50, w: 60, h: 60 };
+            items = [];
+            score = 0;
+            speed = 2.2;
+            spawnTimer = 0;
+            running = true;
+            scoreEl.textContent = score;
+            mouseX = W / 2;
+            draw();
+        }
+
+        function spawnItem() {
+            const types = [
+                { type: 'heart', emoji: '💕', score: 10, weight: 45 },
+                { type: 'gift', emoji: '🎁', score: 30, weight: 12 },
+                { type: 'star', emoji: '⭐', score: 20, weight: 18 },
+                { type: 'bomb', emoji: '💣', score: -30, weight: 15 },
+                { type: 'broken', emoji: '💔', score: -20, weight: 10 }
+            ];
+            const total = types.reduce((s, t) => s + t.weight, 0);
+            let r = Math.random() * total;
+            let chosen;
+            for (const t of types) {
+                r -= t.weight;
+                if (r <= 0) { chosen = t; break; }
+            }
+            items.push({
+                x: 30 + Math.random() * (W - 60),
+                y: -30,
+                ...chosen,
+                vy: speed + Math.random() * 0.5,
+                rot: 0,
+                vr: (Math.random() - 0.5) * 0.1
+            });
+        }
+
+        function tick() {
+            // Move player toward mouse/touch
+            player.x += (mouseX - player.x) * 0.2;
+            player.x = Math.max(30, Math.min(W - 30, player.x));
+
+            // Spawn
+            spawnTimer++;
+            if (spawnTimer > Math.max(14, 40 - score / 10)) {
+                spawnItem();
+                spawnTimer = 0;
+            }
+
+            // Move items
+            for (const it of items) {
+                it.y += it.vy;
+                it.rot += it.vr;
+            }
+
+            // Collision
+            for (let i = items.length - 1; i >= 0; i--) {
+                const it = items[i];
+                const dx = it.x - player.x;
+                const dy = it.y - player.y;
+                if (Math.abs(dx) < 35 && Math.abs(dy) < 35) {
+                    score = Math.max(0, score + it.score);
+                    scoreEl.textContent = score;
+                    items.splice(i, 1);
+                    if (score >= 520) {
+                        winGame();
+                        return;
+                    }
+                    continue;
+                }
+                if (it.y > H + 30) items.splice(i, 1);
+            }
+
+            // Speed up
+            speed = Math.min(9, 2.2 + score * 0.015);
+
+            draw();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+
+            // bg hearts pattern
+            ctx.fillStyle = '#fff0f5';
+            ctx.fillRect(0, 0, W, H);
+
+            // items
+            for (const it of items) {
+                ctx.save();
+                ctx.translate(it.x, it.y);
+                ctx.rotate(it.rot);
+                ctx.font = '28px serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(it.emoji, 0, 0);
+                ctx.restore();
+            }
+
+            // player (basket with photo)
+            ctx.save();
+            ctx.translate(player.x, player.y);
+            // basket
+            ctx.fillStyle = '#ff6b9d';
+            ctx.beginPath();
+            ctx.arc(0, 0, 30, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#e91e63';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            if (playerImg) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(0, 0, 26, 0, Math.PI * 2);
+                ctx.clip();
+                ctx.drawImage(playerImg, -26, -26, 52, 52);
+                ctx.restore();
+            } else {
+                ctx.font = '30px serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🧺', 0, 0);
+            }
+            ctx.restore();
+        }
+
+        function winGame() {
+            running = false;
+            clearInterval(gameLoop);
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('meimeiHigh', highScore);
+                highEl.textContent = highScore;
+            }
+            // 清空画布，露出 winScreen
+            ctx.clearRect(0, 0, W, H);
+            ctx.fillStyle = '#fff0f5';
+            ctx.fillRect(0, 0, W, H);
+            winScreen.style.display = 'block';
+        }
+
+        function startGame() {
+            startScreen.style.display = 'none';
+            winScreen.style.display = 'none';
+            init();
+            clearInterval(gameLoop);
+            gameLoop = setInterval(tick, 30);
+            startBgm();
+            document.getElementById('bgmBtn').textContent = '🎵';
+        }
+
+        // Mouse control
+        canvas.addEventListener('mousemove', e => {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = (e.clientX - rect.left) * (W / rect.width);
+        });
+
+        // Touch control
+        canvas.addEventListener('touchmove', e => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            mouseX = (e.touches[0].clientX - rect.left) * (W / rect.width);
+        }, { passive: false });
+        canvas.addEventListener('touchstart', e => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            mouseX = (e.touches[0].clientX - rect.left) * (W / rect.width);
+        }, { passive: false });
+
+        // Floating background hearts
+        function createFloatHeart() {
+            const div = document.createElement('div');
+            div.className = 'float-heart';
+            div.textContent = ['💕','💗','💓','💖','💘'][Math.floor(Math.random()*5)];
+            div.style.left = Math.random() * 100 + '%';
+            div.style.fontSize = (12 + Math.random() * 18) + 'px';
+            div.style.animationDuration = (6 + Math.random() * 8) + 's';
+            document.getElementById('hearts-bg').appendChild(div);
+            setTimeout(() => div.remove(), 14000);
+        }
+        setInterval(createFloatHeart, 600);
+
+        // ====== BGM: 轻松欢快的合成音乐 ======
+        let audioCtx = null;
+        let bgmPlaying = false;
+        let bgmTimer = null;
+        let bgmStep = 0;
+
+        // C大调欢快旋律 (C5 E5 G5...)
+        const melody = [
+            523, 659, 784, 659, 523, 659, 784, 1047,
+            988, 784, 659, 523, 587, 659, 587, 523,
+            523, 659, 784, 1047, 988, 784, 659, 587,
+            523, 587, 659, 784, 659, 587, 523, 392
+        ];
+        const noteLen = 0.22;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playNote(freq) {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(0.18, now + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + noteLen);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + noteLen);
+        }
+
+        function bgmLoop() {
+            if (!bgmPlaying) return;
+            playNote(melody[bgmStep % melody.length]);
+            // 低音伴奏
+            if (bgmStep % 4 === 0) {
+                const bass = [262, 196, 220, 262][Math.floor(bgmStep / 8) % 4];
+                playBass(bass);
+            }
+            bgmStep++;
+        }
+
+        function playBass(freq) {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.12, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.4);
+        }
+
+        function startBgm() {
+            initAudio();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            if (bgmPlaying) return;
+            bgmPlaying = true;
+            bgmStep = 0;
+            bgmLoop();
+            bgmTimer = setInterval(bgmLoop, noteLen * 1000);
+        }
+
+        function stopBgm() {
+            bgmPlaying = false;
+            if (bgmTimer) { clearInterval(bgmTimer); bgmTimer = null; }
+        }
+
+        function toggleBgm() {
+            if (bgmPlaying) {
+                stopBgm();
+                document.getElementById('bgmBtn').textContent = '🔇';
+            } else {
+                startBgm();
+                document.getElementById('bgmBtn').textContent = '🎵';
+            }
+        }
+    </script>
+</body>
+</html>
